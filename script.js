@@ -63,3 +63,62 @@
         }
     });
 })();
+const contactBtn = document.getElementById("contactBtn");
+
+contactBtn.addEventListener("click", () => {
+    const contactSection = document.getElementById("contact");
+
+    if (contactSection) {
+        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        contactSection.scrollIntoView({
+            behavior: prefersReducedMotion ? "auto" : "smooth",
+            block: "start",
+        });
+        return;
+    }
+
+    window.location.href = "mailto:jarno.rutten@hotmail.be";
+});
+const form = document.getElementById("contactForm");
+const statusEl = document.getElementById("formStatus");
+
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+const jrForm = document.getElementById("jrContactForm");
+const jrStatus = document.getElementById("jrContactStatus");
+const jrSubmit = document.getElementById("jrContactSubmit");
+
+function jrIsValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+jrForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    jrStatus.textContent = "";
+
+    const name = jrForm.elements.name.value.trim();
+    const email = jrForm.elements.email.value.trim();
+    const message = jrForm.elements.message.value.trim();
+
+    if (!name || !email || !message) {
+        jrStatus.textContent = "Vul alle velden in aub.";
+        return;
+    }
+
+    if (!jrIsValidEmail(email)) {
+        jrStatus.textContent = "Vul een geldig e-mailadres in.";
+        return;
+    }
+
+    jrStatus.textContent = "Verzenden...";
+    jrSubmit.disabled = true;
+
+    setTimeout(() => {
+        jrStatus.textContent = "Bedankt! Ik neem zo snel mogelijk contact met je op.";
+        jrForm.reset();
+        jrSubmit.disabled = false;
+    }, 700);
+});
