@@ -1,124 +1,237 @@
 (function () {
-    const modal = document.getElementById("modal");
-    const modalImg = document.getElementById("modal-img");
-    const modalTitle = document.getElementById("modal-title");
-    const modalMeta = document.getElementById("modal-meta");
-    const modalDesc = document.getElementById("modal-desc");
+    const header = document.querySelector(".navbar");
+    const nav = document.getElementById("primary-navigation");
+    const toggle = document.querySelector(".nav-toggle");
+    const navLinks = document.querySelectorAll('.nav-left a[href^="#"]');
 
-    const cards = document.querySelectorAll(".card");
-    const closeTargets = modal.querySelectorAll("[data-close]");
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    let lastFocused = null;
-
-    function openModalFromCard(card) {
-        lastFocused = document.activeElement;
-
-        const title = card.dataset.title || "";
-        const vak = card.dataset.vak || "";
-        const img = card.dataset.image || "";
-        const desc = card.dataset.description || "";
-
-        modalTitle.textContent = title;
-        modalMeta.textContent = vak ? `Vak: ${vak}` : "";
-        modalDesc.textContent = desc;
-
-        modalImg.src = img;
-        modalImg.alt = title ? `Afbeelding van ${title}` : "Projectafbeelding";
-
-        modal.classList.add("is-open");
-        modal.setAttribute("aria-hidden", "false");
-
-        const closeBtn = modal.querySelector(".modal__close");
-        closeBtn?.focus();
+    function headerOffset() {
+        return header ? header.offsetHeight : 0;
     }
 
-    function closeModal() {
-        modal.classList.remove("is-open");
-        modal.setAttribute("aria-hidden", "true");
-
-        modalImg.src = "";
-        modalImg.alt = "";
-
-        if (lastFocused && typeof lastFocused.focus === "function") {
-            lastFocused.focus();
-        }
+    function closeMenu() {
+        if (!nav || !toggle) return;
+        nav.classList.remove("is-open");
+        toggle.setAttribute("aria-expanded", "false");
     }
 
-    cards.forEach((card) => {
-        card.addEventListener("click", () => openModalFromCard(card));
+    function openMenu() {
+        if (!nav || !toggle) return;
+        nav.classList.add("is-open");
+        toggle.setAttribute("aria-expanded", "true");
+    }
 
-        card.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                openModalFromCard(card);
-            }
+    function toggleMenu() {
+        if (!nav || !toggle) return;
+        const isOpen = nav.classList.toggle("is-open");
+        toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    }
+
+    function scrollToHash(hash) {
+        if (!hash || !hash.startsWith("#")) return;
+        const target = document.querySelector(hash);
+        if (!target) return;
+
+        const extraGap = 12;
+        const top = target.getBoundingClientRect().top + window.pageYOffset - headerOffset() - extraGap;
+
+        window.scrollTo({
+            top: Math.max(0, top),
+            behavior: prefersReducedMotion ? "auto" : "smooth",
+        });
+    }
+
+    if (toggle) {
+        toggle.addEventListener("click", toggleMenu);
+    }
+
+    navLinks.forEach((link) => {
+        link.addEventListener("click", (e) => {
+            const href = link.getAttribute("href");
+            if (!href || !href.startsWith("#")) return;
+
+            e.preventDefault();
+            scrollToHash(href);
+
+            history.pushState(null, "", href);
+
+            closeMenu();
         });
     });
 
-    closeTargets.forEach((el) => el.addEventListener("click", closeModal));
+    document.addEventListener("click", (e) => {
+        if (!nav || !toggle) return;
+        if (!nav.classList.contains("is-open")) return;
+
+        const clickedInsideNav = nav.contains(e.target);
+        const clickedToggle = toggle.contains(e.target);
+        if (!clickedInsideNav && !clickedToggle) closeMenu();
+    });
 
     document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && modal.classList.contains("is-open")) {
-            closeModal();
+        if (e.key === "Escape") closeMenu();
+    });
+
+    window.addEventListener("load", () => {
+        if (location.hash) {
+            scrollToHash(location.hash);
         }
     });
-})();
-const contactBtn = document.getElementById("contactBtn");
 
-contactBtn.addEventListener("click", () => {
-    const contactSection = document.getElementById("contact");
+    window.addEventListener("popstate", () => {
+        if (location.hash) scrollToHash(location.hash);
+    });
 
-    if (contactSection) {
-        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (header) {
+        const onScroll = () => header.classList.toggle("is-scrolled", window.scrollY > 4);
+        onScroll();
+        window.addEventListener("scroll", onScroll, { passive: true });
+    }
 
-        contactSection.scrollIntoView({
-            behavior: prefersReducedMotion ? "auto" : "smooth",
-            block: "start",
+    const sections = document.querySelectorAll("section[id]");
+    const linkByHash = new Map(
+        Array.from(navLinks).map((a) => [a.getAttribute("href"), a])
+    );
+
+    function setActive(hash) {
+        linkByHash.forEach((a, h) => {
+            const active = h === hash;
+            a.classList.toggle("is-active", active);
+            if (active) a.setAttribute("aria-current", "page");
+            else a.removeAttribute("aria-current");
         });
-        return;
     }
 
-    window.location.href = "mailto:jarno.rutten@hotmail.be";
-});
-const form = document.getElementById("contactForm");
-const statusEl = document.getElementById("formStatus");
+    if (sections.length) {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                for (const entry of entries) {
+                    if (!entry.isIntersecting) continue;
+                    setActive(`#${entry.target.id}`);
+                    break;
+                }
+            },
+            {
+                rootMargin: `-${headerOffset() + 20}px 0px -60% 0px`,
+                threshold: 0.1,
+            }
+        );
 
-function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-}
-
-const jrForm = document.getElementById("jrContactForm");
-const jrStatus = document.getElementById("jrContactStatus");
-const jrSubmit = document.getElementById("jrContactSubmit");
-
-function jrIsValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-}
-
-jrForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    jrStatus.textContent = "";
-
-    const name = jrForm.elements.name.value.trim();
-    const email = jrForm.elements.email.value.trim();
-    const message = jrForm.elements.message.value.trim();
-
-    if (!name || !email || !message) {
-        jrStatus.textContent = "Vul alle velden in aub.";
-        return;
+        sections.forEach((s) => observer.observe(s));
     }
 
-    if (!jrIsValidEmail(email)) {
-        jrStatus.textContent = "Vul een geldig e-mailadres in.";
-        return;
+    const contactBtn = document.getElementById("contactBtn");
+    if (contactBtn) {
+        contactBtn.addEventListener("click", () => scrollToHash("#contact"));
     }
 
-    jrStatus.textContent = "Verzenden...";
-    jrSubmit.disabled = true;
+    (function initModal() {
+        const modal = document.getElementById("modal");
+        if (!modal) return;
 
-    setTimeout(() => {
-        jrStatus.textContent = "Bedankt! Ik neem zo snel mogelijk contact met je op.";
-        jrForm.reset();
-        jrSubmit.disabled = false;
-    }, 700);
-});
+        const modalImg = document.getElementById("modal-img");
+        const modalTitle = document.getElementById("modal-title");
+        const modalMeta = document.getElementById("modal-meta");
+        const modalDesc = document.getElementById("modal-desc");
+
+        const cards = document.querySelectorAll(".card");
+        const closeTargets = modal.querySelectorAll("[data-close]");
+
+        let lastFocused = null;
+
+        function openModalFromCard(card) {
+            lastFocused = document.activeElement;
+
+            const title = card.dataset.title || "";
+            const vak = card.dataset.vak || "";
+            const img = card.dataset.image || "";
+            const desc = card.dataset.description || "";
+
+            modalTitle.textContent = title;
+            modalMeta.textContent = vak ? `Vak: ${vak}` : "";
+            modalDesc.textContent = desc;
+
+            if (modalImg) {
+                modalImg.src = img;
+                modalImg.alt = title ? `Afbeelding van ${title}` : "Projectafbeelding";
+            }
+
+            modal.classList.add("is-open");
+            modal.setAttribute("aria-hidden", "false");
+
+            const closeBtn = modal.querySelector(".modal__close");
+            closeBtn?.focus();
+        }
+
+        function closeModal() {
+            modal.classList.remove("is-open");
+            modal.setAttribute("aria-hidden", "true");
+
+            if (modalImg) {
+                modalImg.src = "";
+                modalImg.alt = "";
+            }
+
+            if (lastFocused && typeof lastFocused.focus === "function") {
+                lastFocused.focus();
+            }
+        }
+
+        cards.forEach((card) => {
+            card.addEventListener("click", () => openModalFromCard(card));
+            card.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openModalFromCard(card);
+                }
+            });
+        });
+
+        closeTargets.forEach((el) => el.addEventListener("click", closeModal));
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && modal.classList.contains("is-open")) {
+                closeModal();
+            }
+        });
+    })();
+
+    const jrForm = document.getElementById("jrContactForm");
+    const jrStatus = document.getElementById("jrContactStatus");
+    const jrSubmit = document.getElementById("jrContactSubmit");
+
+    function jrIsValidEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+    }
+
+    if (jrForm && jrStatus && jrSubmit) {
+        jrForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            jrStatus.textContent = "";
+
+            const name = jrForm.elements.name.value.trim();
+            const email = jrForm.elements.email.value.trim();
+            const message = jrForm.elements.message.value.trim();
+
+            if (!name || !email || !message) {
+                jrStatus.textContent = "Vul alle velden in aub.";
+                return;
+            }
+
+            if (!jrIsValidEmail(email)) {
+                jrStatus.textContent = "Vul een geldig e-mailadres in.";
+                return;
+            }
+
+            jrStatus.textContent = "Verzenden...";
+            jrSubmit.disabled = true;
+
+            setTimeout(() => {
+                jrStatus.textContent = "Bedankt! Ik neem zo snel mogelijk contact met je op.";
+                jrForm.reset();
+                jrSubmit.disabled = false;
+            }, 700);
+        });
+    }
+})();
